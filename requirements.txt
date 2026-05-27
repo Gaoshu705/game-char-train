@@ -1,0 +1,27 @@
+# YOLOv8 游戏角色识别项目依赖
+
+# 核心框架
+ultralytics>=8.1.0
+torch>=2.0.0
+torchvision>=0.15.0
+
+# 图像处理
+opencv-python>=4.8.0
+Pillow>=10.0.0
+
+# 数据处理与可视化
+numpy>=1.24.0
+matplotlib>=3.7.0
+PyYAML>=6.0
+tqdm>=4.65.0
+
+# 屏幕截取
+mss>=9.0.0
+
+# 标注工具（可选）
+# labelImg        - pip install labelImg
+# labelme         - pip install labelme
+
+# 开发工具（可选）
+# tensorboard>=2.13.0
+# wandb>=0.15.0        # 云端实验追踪

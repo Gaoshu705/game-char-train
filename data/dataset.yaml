@@ -1,0 +1,17 @@
+# YOLOv8 数据集配置文件
+# 游戏角色识别与区分
+
+# 数据集根路径
+path: data/dataset
+
+# 训练/验证/测试集路径（相对于 path）
+train: images/train
+val: images/val
+test: images/test
+
+# 类别定义（由 classes.txt 自动生成）
+names:
+  0: body
+
+# 类别数量
+nc: 1

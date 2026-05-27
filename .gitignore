@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# 虚拟环境
+venv/
+env/
+.venv/
+
+# 模型权重（较大）
+models/*.pt
+runs/
+
+# 数据集
+data/raw/images/*
+data/raw/labels/*
+data/processed/*
+data/dataset/images/*
+data/dataset/labels/*
+!data/dataset/images/train/.gitkeep
+!data/dataset/images/val/.gitkeep
+!data/dataset/images/test/.gitkeep
+!data/dataset/labels/train/.gitkeep
+!data/dataset/labels/val/.gitkeep
+!data/dataset/labels/test/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 日志
+*.log
+runs/logs/
