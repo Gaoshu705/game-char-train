@@ -250,15 +250,24 @@ class App(ttk.Frame):
         ttk.Button(sf, text="目录", width=6,
                    command=lambda: self._browse_dir(self.pred_source)).pack(side=tk.LEFT, padx=2)
 
-        ttk.Label(f1, text="输出:").grid(row=2, column=0, sticky=tk.E, padx=(0, 8))
+        ttk.Label(f1, text="摄像头:").grid(row=2, column=0, sticky=tk.E, padx=(0, 8))
+        cf = ttk.Frame(f1)
+        cf.grid(row=2, column=1, sticky=tk.EW, pady=3)
+        self.pred_camera = tk.StringVar(value="0")
+        ttk.Label(cf, text="ID:").pack(side=tk.LEFT)
+        ttk.Entry(cf, textvariable=self.pred_camera, width=6).pack(side=tk.LEFT, padx=(4, 4))
+        ttk.Button(cf, text="扫描摄像头", width=10,
+                   command=self._scan_cameras).pack(side=tk.LEFT, padx=4)
+
+        ttk.Label(f1, text="输出:").grid(row=3, column=0, sticky=tk.E, padx=(0, 8))
         self.pred_output = tk.StringVar()
         of = ttk.Frame(f1)
-        of.grid(row=2, column=1, sticky=tk.EW, pady=3)
+        of.grid(row=3, column=1, sticky=tk.EW, pady=3)
         ttk.Entry(of, textvariable=self.pred_output, width=50).pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-        ttk.Label(f1, text="置信度:").grid(row=3, column=0, sticky=tk.E, padx=(0, 8))
+        ttk.Label(f1, text="置信度:").grid(row=4, column=0, sticky=tk.E, padx=(0, 8))
         self.pred_conf = tk.StringVar(value="0.25")
-        ttk.Entry(f1, textvariable=self.pred_conf, width=10).grid(row=3, column=1, sticky=tk.W, pady=3)
+        ttk.Entry(f1, textvariable=self.pred_conf, width=10).grid(row=4, column=1, sticky=tk.W, pady=3)
 
         f1.columnconfigure(1, weight=1)
 
@@ -468,6 +477,32 @@ class App(ttk.Frame):
             "--scale", self.ext_scale.get(),
         ] + (["--count", self.ext_count.get()] if self.ext_count.get() else [])))
 
+    def _scan_cameras(self):
+        import cv2
+        print("正在扫描可用摄像头...")
+        found = []
+        for i in range(10):
+            cap = cv2.VideoCapture(i, cv2.CAP_DSHOW)
+            if cap.isOpened():
+                ret, _ = cap.read()
+                if ret:
+                    w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                    h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                    found.append(f"  [✓] Camera {i} - {w}x{h}")
+                else:
+                    found.append(f"  [✗] Camera {i} - 可打开但无法读取帧")
+                cap.release()
+        if found:
+            for line in found:
+                print(line)
+            if len(found) > 0 and "[✓]" in found[0]:
+                first_id = found[0].split("]")[0].split("[")[1].replace("✓", "").strip()
+                cam_id = first_id.split()[-1]
+                self.pred_camera.set(cam_id)
+                print(f"已自动选择 Camera {cam_id}")
+        else:
+            print("未检测到可用摄像头，请确认摄像头已连接")
+
     def _run_predict(self, mode):
         if mode == "image":
             source = self.pred_source.get()
@@ -488,7 +523,7 @@ class App(ttk.Frame):
                 if source:
                     self.pred_source.set(source)
         elif mode == "webcam":
-            source = "0"
+            source = self.pred_camera.get().strip() or "0"
 
         if not source:
             print("[WARN] 请先选择推理源")
@@ -511,9 +546,10 @@ class App(ttk.Frame):
             model = YOLO(model_path)
             conf = float(self.pred_conf.get() or 0.25)
 
-            if source == "0":
-                print("启动摄像头推理，按 Q 退出...")
-                cap = cv2.VideoCapture(0)
+            if source.strip().isdigit():
+                camera_id = int(source.strip())
+                print(f"启动摄像头推理 (ID={camera_id})，按 Q 退出...")
+                cap = cv2.VideoCapture(camera_id)
                 while cap.isOpened():
                     ret, frame = cap.read()
                     if not ret:

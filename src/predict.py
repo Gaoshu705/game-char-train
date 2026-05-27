@@ -168,6 +168,79 @@ def predict_video(
         print(f"输出视频: {output_path}")
 
 
+def list_cameras(max_test: int = 10) -> list:
+    """检测并列出可用的摄像头设备
+
+    Args:
+        max_test: 最多测试的摄像头 ID 数量
+
+    Returns:
+        [(id, name), ...] 可用摄像头列表
+    """
+    available = []
+    print("正在检测可用摄像头...")
+    for i in range(max_test):
+        cap = cv2.VideoCapture(i, cv2.CAP_DSHOW)
+        if cap.isOpened():
+            ret, _ = cap.read()
+            if ret:
+                backend = cap.getBackendName()
+                width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                name = f"Camera {i} [{width}x{height}, {backend}]"
+                available.append((i, name))
+                print(f"  [✓] {name}")
+            else:
+                print(f"  [✗] Camera {i} - 可打开但无法读取帧")
+            cap.release()
+        else:
+            pass
+    if not available:
+        print("未检测到可用摄像头！")
+    else:
+        print(f"\n共检测到 {len(available)} 个可用摄像头")
+    return available
+
+
+def select_camera(auto: bool = False) -> int:
+    """选择摄像头：自动选第一个或交互式选择
+
+    Args:
+        auto: True 时自动选择第一个摄像头
+
+    Returns:
+        摄像头 ID
+    """
+    cameras = list_cameras()
+    if not cameras:
+        print("[ERROR] 没有可用摄像头")
+        return -1
+
+    if auto or len(cameras) == 1:
+        cam_id, cam_name = cameras[0]
+        print(f"自动选择: {cam_name}")
+        return cam_id
+
+    print("\n请选择摄像头:")
+    for idx, (cam_id, cam_name) in enumerate(cameras):
+        print(f"  [{idx}] {cam_name}")
+
+    while True:
+        try:
+            choice = input(f"请输入编号 (0-{len(cameras) - 1}): ").strip()
+            idx = int(choice)
+            if 0 <= idx < len(cameras):
+                cam_id, cam_name = cameras[idx]
+                print(f"已选择: {cam_name}")
+                return cam_id
+            print(f"无效选择，请输入 0-{len(cameras) - 1}")
+        except ValueError:
+            print("请输入数字")
+        except (EOFError, KeyboardInterrupt):
+            print("\n已取消")
+            return -1
+
+
 def predict_webcam(
     model: YOLO,
     camera_id: int = 0,
@@ -231,8 +304,16 @@ def main():
         help="模型权重路径"
     )
     parser.add_argument(
-        "--source", type=str, default="0",
-        help="推理源: 图像路径/目录路径/视频路径/0(摄像头)"
+        "--source", type=str, default=None,
+        help="推理源: 图像路径/目录路径/视频路径/摄像头ID(0,1,2...)"
+    )
+    parser.add_argument(
+        "--camera", type=str, default=None,
+        help="摄像头模式: auto=自动选第一个, select=交互选择, 数字=指定摄像头ID"
+    )
+    parser.add_argument(
+        "--list-cameras", action="store_true",
+        help="列出所有可用摄像头"
     )
     parser.add_argument(
         "--output", type=str, default=None,
@@ -257,23 +338,58 @@ def main():
 
     args = parser.parse_args()
 
+    if args.list_cameras:
+        list_cameras()
+        return
+
     model_path = str(resolve_path(args.model))
     model = load_model(model_path)
     print(f"模型已加载: {args.model}")
 
     source = args.source
+    camera_mode = args.camera
+
+    is_camera = camera_mode is not None or (source and source.lower() in ("camera", "webcam"))
+
+    if is_camera or camera_mode:
+        if camera_mode and camera_mode.isdigit():
+            camera_id = int(camera_mode)
+        elif camera_mode == "auto" or (source and source.isdigit()):
+            camera_id = int(source) if source and source.isdigit() else 0
+        elif camera_mode == "select":
+            camera_id = select_camera(auto=False)
+            if camera_id < 0:
+                return
+        elif source and source.isdigit():
+            camera_id = int(source)
+        elif source and source.lower() in ("camera", "webcam"):
+            camera_id = select_camera(auto=False)
+            if camera_id < 0:
+                return
+        else:
+            print("[ERROR] 未指定摄像头，使用 --camera auto/select/编号")
+            print("        或 --source 0 (指定摄像头ID)")
+            return
+        out = args.output or f"runs/webcam_{camera_id}"
+        predict_webcam(model, camera_id, args.conf, args.iou)
+        return
+
+    if not source:
+        print("[ERROR] 请指定推理源 --source，或使用 --camera 选择摄像头")
+        print("示例:")
+        print("  python main.py predict --source image.jpg")
+        print("  python main.py predict --source video.mp4")
+        print("  python main.py predict --camera auto")
+        print("  python main.py predict --camera select")
+        print("  python main.py predict --source 0")
+        print("  python main.py predict --list-cameras")
+        return
 
     is_video = source.endswith((".mp4", ".avi", ".mov", ".mkv", ".webm"))
     is_image = source.endswith((".jpg", ".jpeg", ".png", ".bmp", ".tiff"))
     is_dir = Path(source).is_dir()
-    is_webcam = source == "0" or source.isdigit()
 
-    if is_webcam:
-        camera_id = int(source)
-        out = args.output or f"runs/webcam_{camera_id}"
-        predict_webcam(model, camera_id, args.conf, args.iou)
-
-    elif is_video:
+    if is_video:
         out = args.output or f"runs/predict_video/{Path(source).stem}.mp4"
         predict_video(model, source, out, args.conf, args.iou, args.show)
 
@@ -287,7 +403,7 @@ def main():
 
     else:
         print(f"[ERROR] 不支持的推理源: {source}")
-        print("支持的格式: 图像(.jpg/.png), 目录, 视频(.mp4/.avi), 摄像头(0)")
+        print("支持的格式: 图像(.jpg/.png), 目录, 视频(.mp4/.avi), 摄像头(--camera)")
 
 
 if __name__ == "__main__":

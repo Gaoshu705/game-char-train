@@ -40,13 +40,22 @@ def cmd_train(args):
 
 def cmd_predict(args):
     from src.predict import main as predict_main
+    from src.predict import list_cameras as _list_cameras
+
+    if args.list_cameras:
+        _list_cameras()
+        return
+
     sys.argv = [
         "predict.py",
         "--model", args.model,
-        "--source", args.source,
         "--conf", str(args.conf),
         "--iou", str(args.iou),
     ]
+    if args.source:
+        sys.argv.extend(["--source", args.source])
+    if args.camera:
+        sys.argv.extend(["--camera", args.camera])
     if args.output:
         sys.argv.extend(["--output", args.output])
     if args.show:
@@ -249,7 +258,9 @@ def main():
 
     pred_parser = subparsers.add_parser("predict", help="模型推理")
     pred_parser.add_argument("--model", default="runs/train/game_char_train/weights/best.pt", help="模型路径")
-    pred_parser.add_argument("--source", default="0", help="推理源（图像/视频/目录/摄像头ID）")
+    pred_parser.add_argument("--source", default=None, help="推理源（图像/视频/目录）")
+    pred_parser.add_argument("--camera", default=None, help="摄像头模式: auto/select/编号")
+    pred_parser.add_argument("--list-cameras", action="store_true", help="列出所有可用摄像头")
     pred_parser.add_argument("--conf", type=float, default=0.25, help="置信度阈值")
     pred_parser.add_argument("--iou", type=float, default=0.45, help="IoU阈值")
     pred_parser.add_argument("--output", default=None, help="输出路径")
