@@ -1,4 +1,4 @@
-﻿amp: true
+amp: true
 augment: true
 batch: 8
 cache: false
@@ -15,7 +15,7 @@ half: false
 hsv_h: 0.015
 hsv_s: 0.7
 hsv_v: 0.4
-imgsz: 1280
+imgsz: 640
 lr0: 0.001
 lrf: 0.01
 mixup: 0.1
@@ -26,7 +26,7 @@ mosaic: 1.0
 name: game_char_train
 nbs: 64
 optimizer: AdamW
-patience: 30
+patience: 80
 perspective: 0.0
 plots: true
 pretrained: true

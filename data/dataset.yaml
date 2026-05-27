@@ -2,7 +2,7 @@
 # 游戏角色识别与区分
 
 # 数据集根路径
-path: data/dataset
+path: F:/AI/yolo/game-char-train/data/dataset
 
 # 训练/验证/测试集路径（相对于 path）
 train: images/train
@@ -11,7 +11,7 @@ test: images/test
 
 # 类别定义（由 classes.txt 自动生成）
 names:
-  0: body
+  0: cat
 
 # 类别数量
 nc: 1

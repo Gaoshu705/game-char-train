@@ -22,6 +22,7 @@ data/raw/labels/*
 data/processed/*
 data/dataset/images/*
 data/dataset/labels/*
+!data/dataset.yaml
 !data/dataset/images/train/.gitkeep
 !data/dataset/images/val/.gitkeep
 !data/dataset/images/test/.gitkeep

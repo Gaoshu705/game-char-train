@@ -6,8 +6,9 @@ import os
 import sys
 import io
 
-os.environ.setdefault("PYTHONUTF8", "1")
-os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+os.environ["PYTHONUTF8"] = "1"
+os.environ["PYTHONIOENCODING"] = "utf-8"
+os.environ["PYTHONLEGACYWINDOWSFSENCODING"] = "0"
 try:
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
@@ -267,6 +268,12 @@ class App(ttk.Frame):
         ttk.Button(btn_frame, text="▶ 视频推理", command=lambda: self._run_predict("video")).pack(side=tk.LEFT, padx=4)
         ttk.Button(btn_frame, text="▶ 摄像头", command=lambda: self._run_predict("webcam")).pack(side=tk.LEFT, padx=4)
 
+        prog_frame = ttk.Frame(tab)
+        prog_frame.pack(fill=tk.X, padx=8, pady=(4, 2))
+        self.pred_progress = ttk.Progressbar(prog_frame, mode="indeterminate", length=400)
+        self.pred_progress.pack(fill=tk.X)
+        self.pred_status = ttk.Label(prog_frame, text="")
+
         self.preview_label = ttk.Label(tab, text="推理结果将保存到 runs/ 目录")
         self.preview_label.pack(padx=8, pady=4)
 
@@ -487,6 +494,8 @@ class App(ttk.Frame):
             print("[WARN] 请先选择推理源")
             return
 
+        self.pred_status.config(text="推理中，请稍候...")
+        self.pred_progress.start(15)
         self._run_in_thread("predict", lambda: self._predict_worker(source))
 
     def _predict_worker(self, source):
@@ -530,6 +539,12 @@ class App(ttk.Frame):
                     print(f"       路径: {results[0].save_dir}")
         except Exception as e:
             print(f"[ERROR] 推理失败: {e}")
+        finally:
+            self.master.after(0, self._on_predict_done)
+
+    def _on_predict_done(self):
+        self.pred_progress.stop()
+        self.pred_status.config(text="推理完成")
 
     def _start_screen(self):
         if self.screen_thread and self.screen_thread.is_alive():
@@ -648,14 +663,20 @@ class App(ttk.Frame):
         import subprocess
         cmd = [sys.executable, str(resolve_path(script_path))] + args
         print(f"[CMD] {' '.join(cmd)}")
+        env = os.environ.copy()
+        env.setdefault("PYTHONUTF8", "1")
+        env.setdefault("PYTHONIOENCODING", "utf-8")
+        env["PYTHONLEGACYWINDOWSFSENCODING"] = "0"
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(PROJECT_ROOT))
+            result = subprocess.run(cmd, capture_output=True, text=True,
+                                    encoding="utf-8", errors="replace",
+                                    env=env, cwd=str(PROJECT_ROOT))
             if result.stdout:
                 for line in result.stdout.strip().split("\n"):
                     print(f"  {line}")
             if result.stderr:
                 for line in result.stderr.strip().split("\n"):
-                    print(f"  [STDERR] {line}")
+                    print(f"  {line}")
         except Exception as e:
             print(f"[ERROR] 脚本执行失败: {e}")
 
